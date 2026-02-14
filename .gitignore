@@ -25,3 +25,6 @@ Thumbs.db
 
 # unused model
 plant_disease_model.h5
+
+# to save space
+static/uploads/
