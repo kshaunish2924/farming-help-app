@@ -16,6 +16,10 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.preprocessing import image as kimage
 
+import os
+os.makedirs("static/uploads", exist_ok=True)
+
+
 # Optional: load .env for local dev
 try:
     from dotenv import load_dotenv, find_dotenv
