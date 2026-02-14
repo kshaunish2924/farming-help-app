@@ -1,0 +1,28 @@
+{
+  "Rajasthan": {
+    "general": [
+      { "title": "Dept. of Agriculture, Rajasthan", "url": "https://agriculture.rajasthan.gov.in/" },
+      { "title": "Agmarknet – Mandi Prices", "url": "https://agmarknet.gov.in/" },
+      { "title": "PM-KISAN (Central Scheme)", "url": "https://pmkisan.gov.in/" },
+      { "title": "Soil Health Card Portal", "url": "https://soilhealth.dac.gov.in/" },
+      { "title": "KVK (ICAR) – Rajasthan Network", "url": "https://kvk.icar.gov.in/" }
+    ],
+    "tomato": [
+      { "title": "Tomato: Plant Protection – Advisory (General)", "url": "https://icar.org.in/" },
+      { "title": "PHI & Safe Pesticide Use (General Guidance)", "url": "https://ppqs.gov.in/" }
+    ],
+    "potato": [
+      { "title": "Potato Late Blight Advisory (General)", "url": "https://icar.org.in/" },
+      { "title": "Seed Certification & Truthful Labelling", "url": "https://seednet.gov.in/" }
+    ]
+  },
+  "Maharashtra": {
+    "general": [
+      { "title": "Maha Agriculture Dept", "url": "https://www.maharashtra.gov.in/" },
+      { "title": "Agmarknet – Mandi Prices", "url": "https://agmarknet.gov.in/" }
+    ],
+    "tomato": [
+      { "title": "Tomato Disease Management (General)", "url": "https://icar.org.in/" }
+    ]
+  }
+}

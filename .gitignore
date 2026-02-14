@@ -1,0 +1,27 @@
+# secrets
+.env
+
+# virtual env
+venv/
+.venv/
+
+# editor
+.vscode/
+
+# datasets
+dataset/
+
+# python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# logs
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
+
+# unused model
+plant_disease_model.h5

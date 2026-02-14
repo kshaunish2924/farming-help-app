@@ -1,0 +1,83 @@
+[
+  {
+    "id": "azox-23sc",
+    "name": "Azoxystrobin 23% SC",
+    "for_tags": ["blight", "spot", "mildew", "rust"],
+    "crops": ["tomato", "potato", "chili", "cucumber"],
+    "price_inr": 650,
+    "pack": "250 ml",
+    "buy_url": "https://example.com/azoxystrobin-23sc"
+  },
+  {
+    "id": "mancozeb-75wp",
+    "name": "Mancozeb 75% WP",
+    "for_tags": ["blight", "spot", "scab"],
+    "crops": ["tomato", "potato"],
+    "price_inr": 380,
+    "pack": "1 kg",
+    "buy_url": "https://example.com/mancozeb-75wp"
+  },
+  {
+    "id": "metalaxyl-mancozeb-72",
+    "name": "Metalaxyl 8% + Mancozeb 64% WP (72% WP)",
+    "for_tags": ["late blight", "blight"],
+    "crops": ["potato", "tomato"],
+    "price_inr": 720,
+    "pack": "1 kg",
+    "buy_url": "https://example.com/metalaxyl-mancozeb-72"
+  },
+  {
+    "id": "copper-oxy-50wp",
+    "name": "Copper Oxychloride 50% WP",
+    "for_tags": ["bacterial", "spot", "blight"],
+    "crops": ["tomato", "citrus", "mango"],
+    "price_inr": 420,
+    "pack": "500 g",
+    "buy_url": "https://example.com/copper-oxychloride-50wp"
+  },
+  {
+    "id": "propiconazole-25ec",
+    "name": "Propiconazole 25% EC",
+    "for_tags": ["rust", "mildew", "spot"],
+    "crops": ["wheat", "tomato"],
+    "price_inr": 320,
+    "pack": "250 ml",
+    "buy_url": "https://example.com/propiconazole-25ec"
+  },
+  {
+    "id": "trichoderma-viride",
+    "name": "Trichoderma viride Bio-fungicide",
+    "for_tags": ["rot", "seedling", "general"],
+    "crops": ["tomato", "potato", "chili", "brinjal"],
+    "price_inr": 220,
+    "pack": "1 kg",
+    "buy_url": "https://example.com/trichoderma-viride"
+  },
+  {
+    "id": "bacillus-subtilis",
+    "name": "Bacillus subtilis Bio-control",
+    "for_tags": ["bacterial", "spot", "general"],
+    "crops": ["tomato", "potato", "leafy"],
+    "price_inr": 260,
+    "pack": "1 L",
+    "buy_url": "https://example.com/bacillus-subtilis"
+  },
+  {
+    "id": "neem-3000ppm",
+    "name": "Neem Oil (Cold-Pressed) 3000 ppm",
+    "for_tags": ["insect", "general"],
+    "crops": ["tomato", "potato", "wheat", "rice", "chili"],
+    "price_inr": 280,
+    "pack": "1 L",
+    "buy_url": "https://example.com/neem-3000ppm"
+  },
+  {
+    "id": "spreader-80",
+    "name": "Silicone Spreader / Sticker",
+    "for_tags": ["general"],
+    "crops": [],
+    "price_inr": 180,
+    "pack": "100 ml",
+    "buy_url": "https://example.com/silicone-spreader"
+  }
+]

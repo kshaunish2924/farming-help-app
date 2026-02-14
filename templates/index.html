@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Farming Help - Smart Crop Health Assistant</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1b4332, #2d6a4f, #40916c);
+            color: #f1f5f9;
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.82);
+            border-radius: 22px;
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+        }
+        .soft-card {
+            background: rgba(15, 23, 42, 0.92);
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+        .btn-main {
+            border-radius: 999px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+        .badge-risk {
+            font-size: 0.9rem;
+        }
+        .section-title {
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            color: #a3e635;
+        }
+        a {
+            color: #38bdf8;
+        }
+        a:hover {
+            color: #e0f2fe;
+        }
+        .recommendation-text p {
+            margin-bottom: 0.25rem;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container py-4">
+
+    <!-- Header -->
+    <div class="glass-card p-4 mb-4">
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3">
+            <div>
+                <h2 class="fw-bold mb-1">🌾 Farming Help</h2>
+                <p class="mb-0 text-secondary">
+                    Smart plant disease detection with weather-aware risk, severity, and curated recommendations.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left: Upload + Grad-CAM -->
+        <div class="col-lg-5">
+            <div class="soft-card p-4 mb-4">
+                <p class="section-title mb-1">Step 1</p>
+                <h4 class="fw-bold mb-3">Upload Leaf Image</h4>
+
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="analyze">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Leaf Image</label>
+                        <input type="file" name="file" class="form-control" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">City (for Weather)</label>
+                        <input type="text" name="city" class="form-control" value="{{ city }}" placeholder="e.g., Jaipur">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">State (for Laws)</label>
+                        <input type="text" name="state" class="form-control" value="{{ state }}" placeholder="e.g., Rajasthan">
+                    </div>
+
+                    <button class="btn btn-success btn-main w-100 mt-2">Analyze Image</button>
+                </form>
+            </div>
+
+            <!-- Uploaded Image -->
+            {% if image %}
+            <div class="soft-card p-3 mb-4">
+                <p class="section-title mb-1">Preview</p>
+                <h5 class="fw-bold mb-2">Uploaded Leaf</h5>
+                <img src="/{{ image }}" class="img-fluid rounded border border-secondary" style="max-height: 320px; object-fit: contain;">
+            </div>
+
+            <!-- Grad-CAM Button -->
+            <div class="soft-card p-3 mb-4">
+                <p class="section-title mb-1">Step 2</p>
+                <h5 class="fw-bold mb-3">Explain Prediction (Grad-CAM)</h5>
+                <form method="POST">
+                    <input type="hidden" name="action" value="gradcam">
+                    <input type="hidden" name="image_path" value="{{ image_path_internal }}">
+                    <input type="hidden" name="city" value="{{ city }}">
+                    <input type="hidden" name="state" value="{{ state }}">
+                    <button class="btn btn-warning btn-main w-100">Generate Grad-CAM 🔥</button>
+                </form>
+            </div>
+            {% endif %}
+
+            <!-- Grad-CAM Result -->
+            {% if gradcam %}
+            <div class="soft-card p-3 mb-4">
+                <p class="section-title mb-1">Explainability</p>
+                <h5 class="fw-bold mb-2">Grad-CAM Heatmap</h5>
+                <img src="/{{ gradcam }}" class="img-fluid rounded border border-secondary">
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right: Results, Severity, Recs, Market, Laws, Weather -->
+        <div class="col-lg-7">
+
+            <!-- Prediction + Risk (with Severity under label) -->
+            {% if result %}
+            <div class="soft-card p-4 mb-4">
+                <p class="section-title mb-1">Result</p>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <div>
+                        <h5 class="fw-bold mb-1">Predicted Label</h5>
+                        <p class="fs-5 mb-1 text-info">{{ result }}</p>
+
+                        {% if severity %}
+                        <p class="mb-0">
+                            <strong>Severity (Weather-based view):</strong> {{ severity }}
+                        </p>
+                        {% endif %}
+                    </div>
+
+                    <div class="text-md-end">
+                        {% if risk %}
+                        <h6 class="fw-semibold mb-1">Disease Risk (Weather)</h6>
+                        {% if risk == "Low" %}
+                            <span class="badge bg-success badge-risk px-3 py-2">Low</span>
+                        {% elif risk == "Moderate" %}
+                            <span class="badge bg-warning text-dark badge-risk px-3 py-2">Moderate</span>
+                        {% elif risk == "High" %}
+                            <span class="badge bg-danger badge-risk px-3 py-2">High</span>
+                        {% elif risk == "Severe" %}
+                            <span class="badge bg-dark badge-risk px-3 py-2">Severe</span>
+                        {% else %}
+                            <span class="badge bg-secondary badge-risk px-3 py-2">Unknown</span>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Separate Severity Card (D: extra card) -->
+            {% if severity %}
+            <div class="soft-card p-4 mb-4">
+                <p class="section-title mb-1">Disease Severity</p>
+                <h5 class="fw-bold mb-2">{{ severity }}</h5>
+                {% if weather %}
+                <p class="mb-0 text-secondary small">
+                    Estimated using humidity {{ weather.humidity }}% and temperature {{ weather.temp_c }}°C.
+                </p>
+                {% else %}
+                <p class="mb-0 text-secondary small">
+                    Estimated from default thresholds (no live weather data provided).
+                </p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Recommendations (with severity line at top) -->
+            {% if recommendations %}
+            <div class="soft-card p-4 mb-4">
+                <p class="section-title mb-1">Advisory</p>
+                <h5 class="fw-bold mb-3">Recommendations</h5>
+
+                {% if severity %}
+                <p><strong>Overall Severity:</strong> {{ severity }}</p>
+                {% endif %}
+
+                <div class="recommendation-text">
+                    {% for line in recommendations %}
+                    <p>{{ line }}</p>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Marketplace -->
+            {% if market %}
+            <div class="soft-card p-4 mb-4">
+                <p class="section-title mb-1">Inputs</p>
+                <h5 class="fw-bold mb-3">Recommended Products</h5>
+                <div class="row g-3">
+                    {% for p in market %}
+                    <div class="col-md-6">
+                        <div class="border border-secondary rounded-3 p-2 h-100">
+                            <strong>{{ p.name }}</strong><br>
+                            <small class="text-muted">{{ p.pack }} — ₹{{ p.price_inr }}</small><br>
+                            <a href="{{ p.buy_url }}" target="_blank">View / Buy</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Laws -->
+            {% if laws_links %}
+            <div class="soft-card p-4 mb-4">
+                <p class="section-title mb-1">Compliance</p>
+                <h5 class="fw-bold mb-3">Government Laws & Guidelines</h5>
+                <ul class="mb-0">
+                    {% for l in laws_links %}
+                    <li>
+                        <a href="{{ l.link }}" target="_blank">{{ l.title }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <!-- Weather -->
+            {% if weather or forecast or weather_error %}
+            <div class="soft-card p-4 mb-4">
+                <p class="section-title mb-1">Weather</p>
+
+                {% if weather %}
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <h5 class="fw-bold mb-1">{{ weather.city }}</h5>
+                        <p class="mb-0">
+                            {{ weather.temp_c }}°C • {{ weather.humidity }}% humidity • {{ weather.description }}
+                        </p>
+                    </div>
+                    <div>
+                        <img src="{{ weather.icon }}" alt="icon">
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if weather_error %}
+                <p class="text-danger mb-2">{{ weather_error }}</p>
+                {% endif %}
+
+                {% if forecast %}
+                <h6 class="fw-semibold mt-3 mb-2">Next 12 Hours</h6>
+                <ul class="mb-0">
+                    {% for f in forecast %}
+                    <li class="mb-1">
+                        {{ f.time }} — {{ f.temp_c }}°C, {{ f.humidity }}% • {{ f.desc }}
+                        <img src="{{ f.icon }}" width="32">
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {% if forecast_error %}
+                <p class="text-danger mb-0">{{ forecast_error }}</p>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

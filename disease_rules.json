@@ -1,0 +1,575 @@
+{
+  "pepper_bell_bacterial_spot": {
+    "severity": {
+      "mild": {
+        "chemical": [
+          "Copper oxychloride 50% WP – apply at early onset.",
+          "Azoxystrobin 23% SC – one preventive spray."
+        ],
+        "organic": [
+          "Neem oil 3% spray every 5–7 days.",
+          "Garlic–chili fermented extract spray."
+        ],
+        "actions": [
+          "Remove infected leaves immediately.",
+          "Avoid overhead watering.",
+          "Sanitize pruning tools after use."
+        ]
+      },
+      "moderate": {
+        "chemical": [
+          "Copper hydroxide 50% WP – 2 sprays, 7 days apart.",
+          "Mancozeb 75% WP – alternate with copper sprays."
+        ],
+        "organic": [
+          "Apply Trichoderma-based biofungicide in soil.",
+          "Neem oil 3% + soap solution 1% as spreader."
+        ],
+        "actions": [
+          "Destroy heavily infected plant debris.",
+          "Improve spacing and airflow.",
+          "Avoid touching leaves when wet."
+        ]
+      },
+      "severe": {
+        "chemical": [
+          "Copper oxychloride + streptocycline combo spray.",
+          "Metalaxyl + Mancozeb mixture (as per label)."
+        ],
+        "organic": [
+          "Use strong neem oil 5% + potassium bicarbonate spray.",
+          "Apply Bacillus subtilis foliar spray."
+        ],
+        "actions": [
+          "Remove fully infected plants if needed.",
+          "Avoid irrigation for 24–48 hours after spray.",
+          "Plan for crop rotation next season."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 80,
+      "temp_range": [22, 30],
+      "warning": "Warm, humid weather rapidly increases Pepper Bacterial Spot spread."
+    }
+  },
+
+  "pepper_bell_healthy": {
+    "severity": {
+      "normal": {
+        "chemical": [
+          "No chemical treatment required.",
+          "Use only preventive sprays if recommended regionally."
+        ],
+        "organic": [
+          "Apply neem oil 0.5% every 15–20 days.",
+          "Use compost or vermicompost to enrich soil.",
+          "Add Trichoderma to soil at season start."
+        ],
+        "actions": [
+          "Maintain proper spacing.",
+          "Water at the base of plants.",
+          "Remove yellow or damaged leaves.",
+          "Use mulch to retain moisture.",
+          "Monitor weekly for early symptoms."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 85,
+      "temp_range": [20, 32],
+      "warning": "Healthy but susceptible in humid warm conditions. Monitor regularly."
+    }
+  },
+
+  "potato_early_blight": {
+    "severity": {
+      "mild": {
+        "chemical": [
+          "Mancozeb 75% WP – apply preventively.",
+          "Chlorothalonil 75% WP – early application works well."
+        ],
+        "organic": [
+          "Neem oil 3% spray every 5 days.",
+          "Garlic-clove extract spray."
+        ],
+        "actions": [
+          "Remove spotted leaves early.",
+          "Ensure proper sunlight.",
+          "Avoid overhead irrigation."
+        ]
+      },
+      "moderate": {
+        "chemical": [
+          "Azoxystrobin 23% SC – effective for blight.",
+          "Metalaxyl-M + Mancozeb mixture."
+        ],
+        "organic": [
+          "Apply Trichoderma viride to soil.",
+          "Spray compost tea weekly."
+        ],
+        "actions": [
+          "Clear infected debris.",
+          "Rotate crops next season.",
+          "Improve field airflow."
+        ]
+      },
+      "severe": {
+        "chemical": [
+          "Propiconazole or Difenoconazole spray as per label.",
+          "Strong Mancozeb alternated weekly."
+        ],
+        "organic": [
+          "Use neem oil 5%.",
+          "Foliar spray with potassium bicarbonate solution."
+        ],
+        "actions": [
+          "Remove heavily infected plants.",
+          "Stop irrigation for 1–2 days after spraying.",
+          "Avoid working in fields when foliage is wet."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 75,
+      "temp_range": [20, 28],
+      "warning": "Early blight spreads fast in cool humid weather."
+    }
+  },
+
+  "potato_late_blight": {
+    "severity": {
+      "mild": {
+        "chemical": [
+          "Chlorothalonil 75% WP – early onset spray.",
+          "Mancozeb 75% WP preventive spray."
+        ],
+        "organic": [
+          "Garlic extract spray.",
+          "2% neem seed kernel extract."
+        ],
+        "actions": [
+          "Remove small infected patches.",
+          "Avoid watering late evening.",
+          "Improve ventilation."
+        ]
+      },
+      "moderate": {
+        "chemical": [
+          "Copper oxychloride 50% WP.",
+          "Metalaxyl-M + Mancozeb mixture."
+        ],
+        "organic": [
+          "Use Trichoderma as soil amendment.",
+          "Apply compost tea as foliar spray."
+        ],
+        "actions": [
+          "Clear infected residues.",
+          "Increase spacing.",
+          "Use resistant varieties next season."
+        ]
+      },
+      "severe": {
+        "chemical": [
+          "Cymoxanil + Mancozeb combo spray.",
+          "Fluopicolide-based fungicides."
+        ],
+        "organic": [
+          "Neem oil 5% weekly.",
+          "Potassium bicarbonate foliar spray."
+        ],
+        "actions": [
+          "Remove entire plants showing advanced lesions.",
+          "Stop irrigation immediately.",
+          "Do not store infected tubers."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 90,
+      "temp_range": [15, 22],
+      "warning": "Late blight explodes under cold, wet conditions — high alert."
+    }
+  },
+
+  "potato_healthy": {
+    "severity": {
+      "normal": {
+        "chemical": [
+          "No fungicides needed for healthy potato plants."
+        ],
+        "organic": [
+          "Apply neem oil 0.5% every 2 weeks.",
+          "Use well-prepared compost.",
+          "Add Trichoderma before planting."
+        ],
+        "actions": [
+          "Ensure proper hilling of soil.",
+          "Avoid waterlogging.",
+          "Inspect lower leaves weekly.",
+          "Remove weeds frequently."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 85,
+      "temp_range": [16, 28],
+      "warning": "Monitor leaf undersides during humid days — early blight risk rises."
+    }
+  },
+
+  "tomato_bacterial_spot": {
+    "severity": {
+      "mild": {
+        "chemical": [
+          "Copper oxychloride preventive spray.",
+          "Streptocycline + copper mixture (light dose)."
+        ],
+        "organic": [
+          "Neem oil 3% spray.",
+          "Garlic–chili extract."
+        ],
+        "actions": [
+          "Remove infected leaves.",
+          "Avoid overhead watering.",
+          "Mulch soil to avoid splash infection."
+        ]
+      },
+      "moderate": {
+        "chemical": [
+          "Copper hydroxide 50% WP.",
+          "Mancozeb + copper rotation."
+        ],
+        "organic": [
+          "Trichoderma foliar spray.",
+          "2% NSKE spray."
+        ],
+        "actions": [
+          "Destroy debris.",
+          "Improve spacing.",
+          "Disinfect tools."
+        ]
+      },
+      "severe": {
+        "chemical": [
+          "Copper oxychloride + streptocycline combo.",
+          "Fluopicolide or strong copper fungicide."
+        ],
+        "organic": [
+          "Neem oil 5% weekly.",
+          "Potassium bicarbonate spray."
+        ],
+        "actions": [
+          "Remove severely infected plants.",
+          "Stop watering overhead.",
+          "Do crop rotation next season."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 85,
+      "temp_range": [25, 32],
+      "warning": "High humidity + warm weather causes rapid bacterial spot outbreaks."
+    }
+  },
+
+  "tomato_early_blight": {
+    "severity": {
+      "mild": {
+        "chemical": [
+          "Mancozeb 75% WP early spray.",
+          "Chlorothalonil preventive use."
+        ],
+        "organic": [
+          "Neem oil 3%.",
+          "Garlic extract."
+        ],
+        "actions": [
+          "Remove spotted leaves.",
+          "Increase airflow.",
+          "Avoid wetting leaves."
+        ]
+      },
+      "moderate": {
+        "chemical": [
+          "Azoxystrobin or Difenoconazole.",
+          "Mancozeb alternate sprays."
+        ],
+        "organic": [
+          "Use compost tea weekly.",
+          "Apply Trichoderma in soil."
+        ],
+        "actions": [
+          "Destroy infected matter.",
+          "Improve spacing.",
+          "Avoid field work when wet."
+        ]
+      },
+      "severe": {
+        "chemical": [
+          "Metalaxyl-M + Mancozeb.",
+          "Propiconazole spray."
+        ],
+        "organic": [
+          "Neem oil 5%.",
+          "Potassium bicarbonate foliar spray."
+        ],
+        "actions": [
+          "Remove fully infected stems.",
+          "Stop irrigation for 48 hours.",
+          "Rotate crops next season."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 80,
+      "temp_range": [20, 30],
+      "warning": "Early blight thrives in warm, humid conditions."
+    }
+  },
+
+  "tomato_late_blight": {
+    "severity": {
+      "mild": {
+        "chemical": [
+          "Chlorothalonil early spray.",
+          "Copper fungicide at first symptoms."
+        ],
+        "organic": [
+          "Garlic extract.",
+          "Neem oil 3%."
+        ],
+        "actions": [
+          "Remove early lesions.",
+          "Avoid overhead watering.",
+          "Ensure good sunlight."
+        ]
+      },
+      "moderate": {
+        "chemical": [
+          "Metalaxyl-M + Mancozeb.",
+          "Fluopicolide-based fungicides."
+        ],
+        "organic": [
+          "Trichoderma root treatment.",
+          "Compost tea spray."
+        ],
+        "actions": [
+          "Remove infected fruits.",
+          "Increase airflow.",
+          "Avoid touching wet leaves."
+        ]
+      },
+      "severe": {
+        "chemical": [
+          "Cymoxanil + Mancozeb.",
+          "Strong copper fungicides."
+        ],
+        "organic": [
+          "Neem oil 5%.",
+          "Potassium bicarbonate spray."
+        ],
+        "actions": [
+          "Remove severely infected plants.",
+          "Stop irrigation.",
+          "Do not reuse infected soil."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 90,
+      "temp_range": [15, 22],
+      "warning": "Late blight spreads explosively during cold, humid nights."
+    }
+  },
+
+  "tomato_leaf_mold": {
+    "severity": {
+      "mild": {
+        "chemical": [
+          "Chlorothalonil spray.",
+          "Copper oxychloride."
+        ],
+        "organic": [
+          "Neem oil 3%.",
+          "Garlic–chili extract."
+        ],
+        "actions": [
+          "Increase ventilation.",
+          "Remove moldy leaves.",
+          "Avoid water splash."
+        ]
+      },
+      "moderate": {
+        "chemical": [
+          "Azoxystrobin.",
+          "Difenoconazole."
+        ],
+        "organic": [
+          "Trichoderma foliar spray.",
+          "Compost tea spray."
+        ],
+        "actions": [
+          "Destroy infected matter.",
+          "Reduce humidity indoors.",
+          "Use resistant varieties."
+        ]
+      },
+      "severe": {
+        "chemical": [
+          "Strong copper fungicides.",
+          "Mancozeb alternate sprays."
+        ],
+        "organic": [
+          "Neem oil 5%.",
+          "Potassium bicarbonate."
+        ],
+        "actions": [
+          "Remove infected branches.",
+          "Increase sunlight exposure.",
+          "Improve greenhouse ventilation."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 90,
+      "temp_range": [20, 28],
+      "warning": "Leaf mold spreads rapidly in humid greenhouses."
+    }
+  },
+
+  "tomato_septoria_leaf_spot": {
+    "severity": {
+      "mild": {
+        "chemical": [
+          "Chlorothalonil spray.",
+          "Mancozeb first stage."
+        ],
+        "organic": [
+          "Neem oil 3%.",
+          "Garlic extract."
+        ],
+        "actions": [
+          "Prune lower leaves.",
+          "Improve airflow.",
+          "Avoid overhead watering."
+        ]
+      },
+      "moderate": {
+        "chemical": [
+          "Copper hydroxide.",
+          "Azoxystrobin rotation."
+        ],
+        "organic": [
+          "Trichoderma spray.",
+          "Compost tea foliar spray."
+        ],
+        "actions": [
+          "Destroy plant debris.",
+          "Increase spacing.",
+          "Avoid touching plants when wet."
+        ]
+      },
+      "severe": {
+        "chemical": [
+          "Strong copper treatments.",
+          "Cymoxanil mixes."
+        ],
+        "organic": [
+          "Neem oil 5%.",
+          "Potassium bicarbonate."
+        ],
+        "actions": [
+          "Remove heavily infected plants.",
+          "Suspend irrigation.",
+          "Mulch soil to prevent splash infection."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 85,
+      "temp_range": [20, 28],
+      "warning": "Septoria spreads fast after rainy days — monitor closely."
+    }
+  },
+
+  "tomato_spider_mites_two_spotted_spider_mite": {
+    "severity": {
+      "mild": {
+        "chemical": [
+          "Miticide like Abamectin (light dose).",
+          "Wettable sulfur low concentration."
+        ],
+        "organic": [
+          "Neem oil 3%.",
+          "Water jet to dislodge mites."
+        ],
+        "actions": [
+          "Increase humidity (mites hate moisture).",
+          "Remove leaves with webbing."
+        ]
+      },
+      "moderate": {
+        "chemical": [
+          "Spiromesifen or Abamectin as per label.",
+          "Sulfur spray alternated weekly."
+        ],
+        "organic": [
+          "Neem oil 5%.",
+          "Predatory mites (Phytoseiulus persimilis)."
+        ],
+        "actions": [
+          "Avoid excessive nitrogen fertilizer.",
+          "Prune heavily infested areas."
+        ]
+      },
+      "severe": {
+        "chemical": [
+          "Bifenthrin or Spiromesifen strong dose.",
+          "Alternate miticides to prevent resistance."
+        ],
+        "organic": [
+          "High-pressure water spray.",
+          "Release predatory mites."
+        ],
+        "actions": [
+          "Remove entire infested branches.",
+          "Wash underside of leaves thoroughly.",
+          "Avoid drought stress."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_lt": 40,
+      "temp_range": [28, 35],
+      "warning": "Spider mites thrive in hot, dry weather — increase humidity."
+    }
+  },
+
+  "tomato_healthy": {
+    "severity": {
+      "normal": {
+        "chemical": [
+          "No fungicides needed for healthy plants."
+        ],
+        "organic": [
+          "Neem oil 0.5% every 2–3 weeks.",
+          "Use compost to enhance soil health.",
+          "Apply Trichoderma at season start."
+        ],
+        "actions": [
+          "Maintain staking and pruning.",
+          "Ensure proper watering schedule.",
+          "Remove any damaged leaves.",
+          "Use mulch to prevent soil splash.",
+          "Inspect weekly."
+        ]
+      }
+    },
+    "environment_triggers": {
+      "humidity_gt": 85,
+      "temp_range": [18, 30],
+      "warning": "Monitor lower leaves in humid weather — fungal disease risk increases."
+    }
+  }
+}
