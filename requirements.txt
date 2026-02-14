@@ -1,6 +1,15 @@
 Flask==3.1.2
 gunicorn
-tensorflow==2.15.0
+tensorflow==2.16.1
+# remove any separate "keras==..." line if you have it
+numpy<2
+h5py
+Flask==3.1.2
+gunicorn
+pillow
+matplotlib
+requests
+
 numpy<2
 matplotlib
 pillow

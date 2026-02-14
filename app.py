@@ -49,7 +49,7 @@ IMG_SIZE = 224  # MobileNetV2 default
 # --------------------------------
 # Load model once
 # --------------------------------
-model = keras.models.load_model(MODEL_PATH)
+model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
 # Try to grab the internal MobileNetV2 submodel
 try:
