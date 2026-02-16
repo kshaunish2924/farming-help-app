@@ -1,0 +1,198 @@
+{
+  "Alluvial": {
+    "category": "Genetic",
+    "traits": {
+      "water_retention": "medium",
+      "drainage": "medium",
+      "ph_tendency": "neutral",
+      "salinity_risk": "low",
+      "nutrient_holding": "medium"
+    },
+    "baseline": {
+      "amendments": ["Add compost/FYM each season to maintain structure."],
+      "irrigation": ["Irrigate based on crop stage; avoid stagnation in low-lying fields."],
+      "warnings": ["Watch for waterlogging after heavy rains in flat river belts."]
+    }
+  },
+  "Black (Regur / Vertisols)": {
+    "category": "Genetic",
+    "traits": {
+      "water_retention": "high",
+      "drainage": "poor",
+      "ph_tendency": "slightly_alkaline",
+      "salinity_risk": "medium",
+      "nutrient_holding": "high"
+    },
+    "baseline": {
+      "amendments": ["Add organic matter (compost/FYM) to improve structure.", "Gypsum if sodicity suspected (only after test)."],
+      "irrigation": ["Avoid over-irrigation; irrigate in smaller amounts.", "Ensure drainage channels during monsoon."],
+      "warnings": ["High waterlogging risk in rainy/humid periods; fungal pressure can increase."]
+    }
+  },
+  "Red Soil": {
+    "category": "Genetic",
+    "traits": {
+      "water_retention": "medium_low",
+      "drainage": "good",
+      "ph_tendency": "slightly_acidic",
+      "salinity_risk": "low",
+      "nutrient_holding": "medium_low"
+    },
+    "baseline": {
+      "amendments": ["Add compost/FYM; apply balanced NPK with micronutrients if needed."],
+      "irrigation": ["More frequent light irrigation than black soils."],
+      "warnings": ["Can be low in nitrogen/organic carbon; maintain organic matter."]
+    }
+  },
+  "Laterite Soil": {
+    "category": "Genetic",
+    "traits": {
+      "water_retention": "low_medium",
+      "drainage": "good",
+      "ph_tendency": "acidic",
+      "salinity_risk": "low",
+      "nutrient_holding": "low"
+    },
+    "baseline": {
+      "amendments": ["Apply compost/FYM regularly.", "Apply lime/dolomite carefully to reduce acidity (prefer soil test)."],
+      "irrigation": ["Mulch heavily; irrigate in short frequent cycles if needed."],
+      "warnings": ["Acidic + leached soil: nutrients wash away quickly, prefer split fertilization."]
+    }
+  },
+  "Desert / Arid Sandy": {
+    "category": "Genetic",
+    "traits": {
+      "water_retention": "low",
+      "drainage": "very_good",
+      "ph_tendency": "neutral_to_alkaline",
+      "salinity_risk": "medium_high",
+      "nutrient_holding": "low"
+    },
+    "baseline": {
+      "amendments": ["Add organic matter + mulching to increase water retention.", "Use micro-irrigation (drip)."],
+      "irrigation": ["Frequent light irrigation; avoid flood irrigation."],
+      "warnings": ["High moisture loss + possible salinity buildup; manage salts via proper drainage + good water."]
+    }
+  },
+  "Mountain / Forest Soil": {
+    "category": "Genetic",
+    "traits": {
+      "water_retention": "medium",
+      "drainage": "good",
+      "ph_tendency": "acidic",
+      "salinity_risk": "low",
+      "nutrient_holding": "medium"
+    },
+    "baseline": {
+      "amendments": ["Compost + liming if very acidic (soil test)."],
+      "irrigation": ["Avoid erosion; use contouring where slope exists."],
+      "warnings": ["Erosion risk on slopes."]
+    }
+  },
+  "Saline / Alkaline Soil": {
+    "category": "Problem Soil",
+    "traits": {
+      "water_retention": "variable",
+      "drainage": "poor_to_medium",
+      "ph_tendency": "alkaline",
+      "salinity_risk": "high",
+      "nutrient_holding": "variable"
+    },
+    "baseline": {
+      "amendments": ["Improve drainage; add gypsum if sodic (only after test).", "Use organic matter to improve structure."],
+      "irrigation": ["Avoid poor-quality saline water; use proper leaching only with drainage."],
+      "warnings": ["Salt stress mimics nutrient deficiency; confirm with soil EC/pH test if possible."]
+    }
+  },
+  "Peaty / Marshy Soil": {
+    "category": "Organic",
+    "traits": {
+      "water_retention": "high",
+      "drainage": "poor",
+      "ph_tendency": "acidic",
+      "salinity_risk": "low",
+      "nutrient_holding": "medium"
+    },
+    "baseline": {
+      "amendments": ["Improve drainage and aeration; compost can help structure."],
+      "irrigation": ["Avoid over-irrigation; keep root zone aerated."],
+      "warnings": ["Waterlogging encourages root rot and fungal diseases."]
+    }
+  },
+
+  "Sandy (Texture)": {
+    "category": "Texture",
+    "traits": {
+      "water_retention": "low",
+      "drainage": "very_good",
+      "ph_tendency": "neutral",
+      "salinity_risk": "medium",
+      "nutrient_holding": "low"
+    },
+    "baseline": {
+      "amendments": ["Add compost + mulch to improve water/nutrient holding."],
+      "irrigation": ["Frequent light irrigation."],
+      "warnings": ["Fertilizer leaches quickly; use split doses."]
+    }
+  },
+  "Clayey (Texture)": {
+    "category": "Texture",
+    "traits": {
+      "water_retention": "high",
+      "drainage": "poor",
+      "ph_tendency": "neutral",
+      "salinity_risk": "medium",
+      "nutrient_holding": "high"
+    },
+    "baseline": {
+      "amendments": ["Add organic matter to improve aeration; ensure drainage."],
+      "irrigation": ["Avoid excess water; irrigate less frequently but deeper (if not waterlogged)."],
+      "warnings": ["High waterlogging and fungal risk in humid/rainy conditions."]
+    }
+  },
+  "Loamy (Texture)": {
+    "category": "Texture",
+    "traits": {
+      "water_retention": "medium",
+      "drainage": "good",
+      "ph_tendency": "neutral",
+      "salinity_risk": "low",
+      "nutrient_holding": "medium"
+    },
+    "baseline": {
+      "amendments": ["Maintain with compost/FYM."],
+      "irrigation": ["Irrigate based on crop stage; generally stable."],
+      "warnings": ["Still monitor waterlogging during heavy rains."]
+    }
+  },
+  "Silty (Texture)": {
+    "category": "Texture",
+    "traits": {
+      "water_retention": "medium_high",
+      "drainage": "medium",
+      "ph_tendency": "neutral",
+      "salinity_risk": "low",
+      "nutrient_holding": "medium"
+    },
+    "baseline": {
+      "amendments": ["Organic matter to reduce crusting and compaction."],
+      "irrigation": ["Avoid surface crust; irrigate gently."],
+      "warnings": ["Can compact/crust—affects seedlings."]
+    }
+  },
+  "Gravelly / Shallow Soil": {
+    "category": "Terrain",
+    "traits": {
+      "water_retention": "low",
+      "drainage": "good",
+      "ph_tendency": "variable",
+      "salinity_risk": "low",
+      "nutrient_holding": "low"
+    },
+    "baseline": {
+      "amendments": ["Add organic matter; use mulching."],
+      "irrigation": ["More frequent irrigation; conserve moisture."],
+      "warnings": ["Low rooting depth; drought stress appears quickly."]
+    }
+  }
+}

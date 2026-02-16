@@ -19,6 +19,8 @@ from tensorflow.keras.preprocessing import image as kimage
 import os
 os.makedirs("static/uploads", exist_ok=True)
 
+from flask import Flask, render_template, request, jsonify
+
 
 # Optional: load .env for local dev
 try:
@@ -31,6 +33,7 @@ except Exception:
 # Flask setup & constants
 # --------------------------------
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB
 
 UPLOAD_FOLDER = "static/uploads/"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -310,6 +313,88 @@ def laws_for_state(state: Optional[str], predicted_label: Optional[str]) -> List
     return items
 
 # --------------------------------
+# Soil Add-on (Location + Manual Soil Type)
+# --------------------------------
+SOIL_CATALOG = _load_json_file("soil/soil_catalog.json") or {}
+STATE_SOILS = _load_json_file("soil/state_soils.json") or {}
+
+def get_state_default_soils(state: str) -> List[str]:
+    st = (state or "").strip()
+    if not st or st not in STATE_SOILS:
+        return []
+    return STATE_SOILS[st].get("default_soils", []) or []
+
+def get_soil_info(soil_type: Optional[str]) -> Optional[dict]:
+    if not soil_type:
+        return None
+    return SOIL_CATALOG.get(soil_type)
+
+def choose_soil(state: str, manual_soil: Optional[str]) -> Tuple[Optional[str], Optional[dict], str]:
+    """
+    Returns: (soil_type, soil_info, source)
+    source: 'manual' or 'default' or 'none'
+    """
+    manual_soil = (manual_soil or "").strip()
+    if manual_soil and manual_soil in SOIL_CATALOG:
+        return manual_soil, SOIL_CATALOG[manual_soil], "manual"
+
+    defaults = get_state_default_soils(state)
+    if defaults:
+        s = defaults[0]
+        return s, SOIL_CATALOG.get(s), "default"
+
+    return None, None, "none"
+
+def soil_weather_leaf_fusion_notes(soil_info: Optional[dict],
+                                  weather: Optional[dict],
+                                  predicted_label: Optional[str]) -> List[str]:
+    """
+    Adds extra recommendations based on soil traits + weather + disease label.
+    Keep it rule-based and PBL-friendly.
+    """
+    notes = []
+    if not soil_info:
+        return notes
+
+    traits = (soil_info.get("traits") or {})
+    base = (soil_info.get("baseline") or {})
+
+    # Baseline soil guidance
+    notes.append("### Soil-Based Advisory:")
+    for x in base.get("amendments", []):
+        notes.append(f"- **Soil amendment:** {x}")
+    for x in base.get("irrigation", []):
+        notes.append(f"- **Irrigation:** {x}")
+    for x in base.get("warnings", []):
+        notes.append(f"- ⚠ **Soil warning:** {x}")
+
+    # Weather-driven adjustments
+    if weather:
+        hum = weather.get("humidity")
+        temp = weather.get("temp_c")
+
+        # High humidity + poor drainage => fungal/waterlogging warning
+        if hum is not None and hum >= 75 and traits.get("drainage") in ("poor", "poor_to_medium"):
+            notes.append("- ⚠ **High humidity + poor drainage**: Increase drainage, avoid over-irrigation, keep foliage dry at night.")
+
+        # Temperature sweet-spot for fungal spread + high water retention soils
+        if temp is not None and 22 <= float(temp) <= 30 and traits.get("water_retention") in ("high",):
+            notes.append("- ⚠ **Warm + high water retention soil**: Fungal spread risk increases; ensure spacing, airflow, and morning watering only.")
+
+    # Leaf label adjustments (very simple but useful)
+    label = (predicted_label or "").lower()
+    if label:
+        if any(k in label for k in ["blight", "spot", "mildew", "rust"]):
+            # fungal-like
+            if traits.get("drainage") in ("poor", "poor_to_medium"):
+                notes.append("- ✅ Because disease looks fungal + soil drains poorly: prioritize drainage + avoid wet leaves; spray timing matters (avoid before rain).")
+        if "healthy" in label:
+            notes.append("- ✅ Plant looks healthy: follow soil maintenance + preventive schedule (compost + proper irrigation).")
+
+    return notes
+
+
+# --------------------------------
 # Weather Functions (with cache)
 # --------------------------------
 _weather_cache: Dict[str, Tuple[float, Optional[dict], Optional[str]]] = {}
@@ -508,6 +593,24 @@ def generate_gradcam(image_path: str) -> str:
 
     return out_path.replace("\\", "/")
 
+@app.route("/soil/recommendations", methods=["POST"])
+def soil_recommendations_api():
+    data = request.get_json(silent=True) or {}
+    state = (data.get("state") or "").strip()
+    soil_type = (data.get("soil_type") or "").strip()
+
+    chosen, info, source = choose_soil(state, soil_type)
+    defaults = get_state_default_soils(state)
+
+    return jsonify({
+        "state": state,
+        "chosen_soil": chosen,
+        "source": source,
+        "state_default_soils": defaults,
+        "soil_info": info
+    })
+
+
 
 # --------------------------------
 # ROUTES
@@ -530,6 +633,11 @@ def index():
     laws_links = []
     risk = None
     severity_ui = None  # for UI display (weather-based / fallback)
+    soil_type = ""
+    chosen_soil = None
+    soil_info = None
+    soil_source = None
+    soil_defaults = []
 
     if request.method == "POST":
         action = request.form.get("action", "analyze")
@@ -538,6 +646,10 @@ def index():
 
         # ------------------- ANALYZE -------------------
         if action == "analyze":
+            # ✅ SOIL INPUT (add here)
+            soil_type = request.form.get("soil_type", "").strip()
+            soil_defaults = get_state_default_soils(state)
+            chosen_soil, soil_info, soil_source = choose_soil(state, soil_type)
             file = request.files.get("file")
             if file and file.filename:
                 filename = secure_filename(file.filename)
@@ -569,6 +681,8 @@ def index():
                     humidity=weather["humidity"] if weather else None,
                     temperature=weather["temp_c"] if weather else None
                 )
+                recs += ["", "----", ""]
+                recs += soil_weather_leaf_fusion_notes(soil_info, weather, predicted_label)
 
                 # Marketplace & laws
                 market = marketplace_recommendations(predicted_label)
@@ -596,7 +710,10 @@ def index():
             existing = request.form.get("image_path", "")
             city = request.form.get("city", "").strip()
             state = request.form.get("state", "").strip() or ""
-
+            # ✅ SOIL INPUT (add here)
+            soil_type = request.form.get("soil_type", "").strip()
+            soil_defaults = get_state_default_soils(state)
+            chosen_soil, soil_info, soil_source = choose_soil(state, soil_type)  
             if existing:
                 existing = existing.replace("\\", "/")
 
@@ -626,6 +743,8 @@ def index():
                         humidity=weather["humidity"] if weather else None,
                         temperature=weather["temp_c"] if weather else None
                     )
+                    recs += ["", "----", ""]
+                    recs += soil_weather_leaf_fusion_notes(soil_info, weather, predicted_label)
 
                     market = marketplace_recommendations(predicted_label)
                     laws_links = laws_for_state(state, predicted_label)
@@ -672,7 +791,14 @@ def index():
         city=city or "",
         state=state or "",
         risk=risk,
-        severity=severity_ui
+        severity=severity_ui,
+        soil_types=list(SOIL_CATALOG.keys()),
+        soil_defaults=soil_defaults,
+        soil_type=soil_type,
+        chosen_soil=chosen_soil,
+        soil_source=soil_source,
+        soil_info=soil_info
+
     )
 
 # --------------------------------
@@ -683,3 +809,9 @@ if __name__ == "__main__":
     if not OPENWEATHER_API_KEY:
         print("NOTE: Weather disabled until API key is set.")
     app.run(debug=True)
+
+from werkzeug.exceptions import RequestEntityTooLarge
+
+@app.errorhandler(RequestEntityTooLarge)
+def file_too_large(e):
+    return {"error": "File too large. Max 5MB."}, 413

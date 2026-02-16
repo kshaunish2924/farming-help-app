@@ -1,0 +1,14 @@
+{
+  "Maharashtra": {
+    "default_soils": ["Black (Regur / Vertisols)", "Red Soil", "Alluvial"],
+    "notes": ["Black soil common in Vidarbha/Marathwada; alluvial near major rivers."]
+  },
+  "Goa": {
+    "default_soils": ["Laterite Soil", "Alluvial", "Sandy (Texture)"],
+    "notes": ["Laterite is dominant; alluvial in river valleys; coastal sandy in pockets."]
+  },
+  "Rajasthan": {
+    "default_soils": ["Desert / Arid Sandy", "Alluvial", "Saline / Alkaline Soil"],
+    "notes": ["Desert soils dominant; alluvial in eastern belts; salinity patches exist."]
+  }
+}
