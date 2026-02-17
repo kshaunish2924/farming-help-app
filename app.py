@@ -1,13 +1,4 @@
-# app.py — FULL FILE (Your existing Farming Help features + NDVI route + Offline LLM Chatbot via Ollama + Quick Login)
-# ✅ Keeps your existing routes and logic
-# ✅ Adds /login + /logout (session-based)
-# ✅ Protects "/" (main dashboard) behind login_required
-# ✅ Chatbot works offline via Ollama: /chat and /chat/reset
-# ✅ NDVI route stays separate: /ndvi/analyze
-#
-# NOTE:
-# - You MUST create templates/login.html (I can paste it again if you want).
-# - Your templates/index.html should include the chatbot JS (the one I gave earlier).
+
 
 import os
 import time

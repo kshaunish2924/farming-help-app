@@ -22,3 +22,5 @@ static/uploads/*
 
 # Logs
 *.log
+
+dataset/
