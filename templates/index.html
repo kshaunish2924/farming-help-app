@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>Farming Help - Smart Crop Health Assistant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
     <style>
         body {
             min-height: 100vh;
@@ -36,18 +39,45 @@
             font-size: 0.9rem;
             color: #a3e635;
         }
-        a {
-            color: #38bdf8;
-        }
-        a:hover {
-            color: #e0f2fe;
-        }
+        a { color: #38bdf8; }
+        a:hover { color: #e0f2fe; }
         .recommendation-text p {
             margin-bottom: 0.25rem;
             white-space: pre-wrap;
         }
+
+        /* Chat UI */
+        #chatBox {
+            height: 290px;
+            overflow-y: auto;
+            background: rgba(2, 6, 23, 0.35);
+            border-radius: 14px;
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            padding: 14px;
+        }
+        .chat-msg { margin-bottom: 10px; line-height: 1.25rem; }
+        .chat-you strong { color: #60a5fa; }
+        .chat-bot strong { color: #a3e635; }
+        .chat-meta {
+            font-size: 0.8rem;
+            color: rgba(241, 245, 249, 0.65);
+            margin-top: 6px;
+        }
+
+        /* NDVI prototype */
+        .note-text { color: rgba(241, 245, 249, 0.75); font-size: 0.9rem; }
+        .code-pill {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.85rem;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(148, 163, 184, 0.15);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            display: inline-block;
+        }
     </style>
 </head>
+
 <body>
 
 <div class="container py-4">
@@ -61,11 +91,18 @@
                     Smart plant disease detection with weather-aware risk, severity, and curated recommendations.
                 </p>
             </div>
+
+            <div class="text-md-end">
+                <div class="small text-secondary">
+                    Logged in as <strong class="text-light">{{ session.username }}</strong>
+                </div>
+                <a href="/logout" class="btn btn-outline-light btn-sm btn-main mt-2">Logout</a>
+            </div>
         </div>
     </div>
 
     <div class="row g-4">
-        <!-- Left: Upload + Grad-CAM -->
+        <!-- Left: Upload + NDVI + Grad-CAM -->
         <div class="col-lg-5">
             <div class="soft-card p-4 mb-4">
                 <p class="section-title mb-1">Step 1</p>
@@ -125,6 +162,32 @@
                 </form>
             </div>
 
+            <!-- NDVI (Prototype) -->
+            <div class="soft-card p-4 mb-4">
+                <p class="section-title mb-1">Phase 2</p>
+                <h4 class="fw-bold mb-2">NDVI Crop Health (Prototype)</h4>
+
+                <div class="alert alert-warning mb-3">
+                    <strong>Status:</strong> NDVI-like vegetation index module is under integration.
+                    <div class="mt-2 note-text">
+                        Backend endpoint already exists: <span class="code-pill">POST /ndvi/analyze</span>
+                    </div>
+                </div>
+
+                <div class="note-text mb-2">
+                    Planned outputs:
+                    <ul class="mb-2">
+                        <li>NDVI mean</li>
+                        <li>Stress percentage</li>
+                        <li>Health category (Healthy / Moderate / Stressed)</li>
+                    </ul>
+                </div>
+
+                <button class="btn btn-secondary btn-main w-100" disabled>
+                    NDVI Analysis (UI coming soon)
+                </button>
+            </div>
+
             <!-- Uploaded Image -->
             {% if image %}
             <div class="soft-card p-3 mb-4">
@@ -142,7 +205,6 @@
                     <input type="hidden" name="image_path" value="{{ image_path_internal }}">
                     <input type="hidden" name="city" value="{{ city }}">
                     <input type="hidden" name="state" value="{{ state }}">
-                    <!-- ✅ keep soil selection for Grad-CAM too -->
                     <input type="hidden" name="soil_type" value="{{ soil_type }}">
                     <button class="btn btn-warning btn-main w-100">Generate Grad-CAM 🔥</button>
                 </form>
@@ -159,8 +221,36 @@
             {% endif %}
         </div>
 
-        <!-- Right: Results, Severity, Recs, Market, Laws, Weather -->
+        <!-- Right: Chatbot + Results, Severity, Recs, Market, Laws, Weather -->
         <div class="col-lg-7">
+
+            <!-- Chatbot -->
+            <div class="soft-card p-4 mb-4">
+                <p class="section-title mb-1">Assistant</p>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                    <h5 class="fw-bold mb-0">Chatbot </h5>
+                    <button class="btn btn-outline-light btn-sm" type="button" onclick="resetChat()">Reset</button>
+                </div>
+
+                <div class="chat-meta mt-2">
+                    Uses current analysis context (label, severity, weather, soil, laws, marketplace).
+                </div>
+
+                <div id="chatBox" class="mt-3">
+                    <div class="chat-msg chat-bot">
+                        <strong>Bot:</strong> Hi! Ask: “What should I do now?”, “Explain the risk”, “Give precautions”.
+                    </div>
+                </div>
+
+                <div class="input-group mt-3">
+                    <input id="chatInput" type="text" class="form-control" placeholder="Type your question...">
+                    <button class="btn btn-info text-dark fw-semibold" type="button" onclick="sendChat()">Send</button>
+                </div>
+
+                <div class="chat-meta">
+                    Tip: After <strong>Analyze Image</strong>, ask: “Summarize my case in 5 steps”.
+                </div>
+            </div>
 
             <!-- Prediction + Risk (with Severity under label) -->
             {% if result %}
@@ -205,7 +295,7 @@
             </div>
             {% endif %}
 
-            <!-- Separate Severity Card (D: extra card) -->
+            <!-- Separate Severity Card -->
             {% if severity %}
             <div class="soft-card p-4 mb-4">
                 <p class="section-title mb-1">Disease Severity</p>
@@ -318,6 +408,78 @@
         </div>
     </div>
 </div>
+
+<script>
+    // Context from current page (safe JSON via Jinja)
+    const chatContext = {
+        result: {{ result|tojson if result else "null" }},
+        severity: {{ severity|tojson if severity else "null" }},
+        risk: {{ risk|tojson if risk else "null" }},
+        weather: {{ weather|tojson if weather else "null" }},
+        chosen_soil: {{ chosen_soil|tojson if chosen_soil else "null" }},
+        soil_info: {{ soil_info|tojson if soil_info else "null" }},
+        market: {{ market|tojson if market else "null" }},
+        laws_links: {{ laws_links|tojson if laws_links else "null" }}
+    };
+
+    function appendMessage(sender, text, mode) {
+        const box = document.getElementById("chatBox");
+        const div = document.createElement("div");
+
+        const cls = sender === "You" ? "chat-you" : "chat-bot";
+        div.className = "chat-msg " + cls;
+
+        const safeText = (text || "").toString().replace(/\n/g, "<br>");
+        const modeTag = mode ? ` <span class="badge bg-secondary ms-2">${mode}</span>` : "";
+
+        div.innerHTML = `<strong>${sender}:</strong> ${safeText}${sender === "Bot" ? modeTag : ""}`;
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+    }
+
+    async function sendChat() {
+        const input = document.getElementById("chatInput");
+        const message = input.value.trim();
+        if (!message) return;
+
+        appendMessage("You", message);
+        input.value = "";
+
+        appendMessage("Bot", "Typing...", "…");
+        const box = document.getElementById("chatBox");
+        const last = box.lastChild;
+
+        try {
+            const res = await fetch("/chat", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ message, ...chatContext })
+            });
+
+            const data = await res.json();
+            if (last) last.remove();
+            appendMessage("Bot", data.reply || "No response.", data.mode || "");
+        } catch (e) {
+            if (last) last.remove();
+            appendMessage("Bot", "Chatbot service not available right now.", "fallback");
+        }
+    }
+
+    async function resetChat() {
+        try {
+            await fetch("/chat/reset", { method: "POST" });
+            const box = document.getElementById("chatBox");
+            box.innerHTML = `
+                <div class="chat-msg chat-bot">
+                    <strong>Bot:</strong> Chat cleared ✅ Ask me about disease, severity, weather risk, soil, laws, or products.
+                </div>`;
+        } catch (e) {}
+    }
+
+    document.getElementById("chatInput").addEventListener("keydown", function (e) {
+        if (e.key === "Enter") sendChat();
+    });
+</script>
 
 </body>
 </html>

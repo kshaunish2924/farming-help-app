@@ -1,26 +1,40 @@
+# app.py — FULL FILE (Your existing Farming Help features + NDVI route + Offline LLM Chatbot via Ollama + Quick Login)
+# ✅ Keeps your existing routes and logic
+# ✅ Adds /login + /logout (session-based)
+# ✅ Protects "/" (main dashboard) behind login_required
+# ✅ Chatbot works offline via Ollama: /chat and /chat/reset
+# ✅ NDVI route stays separate: /ndvi/analyze
+#
+# NOTE:
+# - You MUST create templates/login.html (I can paste it again if you want).
+# - Your templates/index.html should include the chatbot JS (the one I gave earlier).
+
 import os
 import time
 import json
 import re
 import traceback
 from typing import List, Optional, Tuple, Dict
+from functools import wraps
 
 import numpy as np
-from PIL import Image
 
-from flask import Flask, render_template, request
-from werkzeug.utils import secure_filename
+# Pillow is required for Grad-CAM and NDVI utils.
+try:
+    from PIL import Image
+except Exception:
+    Image = None
 
 import requests
 import tensorflow as tf
-from tensorflow import keras
 from tensorflow.keras.preprocessing import image as kimage
 
-import os
-os.makedirs("static/uploads", exist_ok=True)
-
-from flask import Flask, render_template, request, jsonify
-
+from flask import (
+    Flask, render_template, request, jsonify,
+    session, redirect, url_for, flash
+)
+from werkzeug.utils import secure_filename
+from werkzeug.exceptions import RequestEntityTooLarge
 
 # Optional: load .env for local dev
 try:
@@ -29,42 +43,110 @@ try:
 except Exception:
     pass
 
+# Optional NDVI utilities (your ndvi_utils.py)
+try:
+    from ndvi_utils import load_rgb_image, ndvi_metrics
+except Exception:
+    load_rgb_image = None
+    ndvi_metrics = None
+
+
 # --------------------------------
 # Flask setup & constants
 # --------------------------------
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-change-me")
 
 UPLOAD_FOLDER = "static/uploads/"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+
+# --------------------------------
+# QUICK LOGIN CONFIG (demo-friendly)
+# --------------------------------
+APP_USER = os.environ.get("APP_USER", "admin")
+APP_PASS = os.environ.get("APP_PASS", "admin123")
+
+
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return wrapper
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    # If already logged in, go to dashboard
+    if session.get("logged_in"):
+        return redirect(url_for("index"))
+
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = (request.form.get("password") or "").strip()
+
+        if username == APP_USER and password == APP_PASS:
+            session["logged_in"] = True
+            session["username"] = username
+            return redirect(url_for("index"))
+        else:
+            flash("Invalid username/password", "danger")
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+# --------------------------------
 # Weather config
+# --------------------------------
 OPENWEATHER_API_KEY = os.environ.get("OPENWEATHER_API_KEY", "")
 OWM_CURRENT = "https://api.openweathermap.org/data/2.5/weather"
 OWM_FORECAST = "https://api.openweathermap.org/data/2.5/forecast"
 WEATHER_TTL_SEC = 600  # 10 minutes cache
 
+
+# --------------------------------
 # Model config
+# --------------------------------
 MODEL_PATH = "plant_disease_model.keras"
 IMG_SIZE = 224  # MobileNetV2 default
 
-# --------------------------------
-# Load model once
-# --------------------------------
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 
-# Try to grab the internal MobileNetV2 submodel
+# --------------------------------
+# Load model once (safe)
+# --------------------------------
+model = None
+BASE_CNN = None
+
 try:
-    BASE_CNN = model.get_layer("mobilenetv2_1.00_224")
-except Exception:
+    model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+
+    # Try to grab the internal MobileNetV2 submodel
+    try:
+        BASE_CNN = model.get_layer("mobilenetv2_1.00_224")
+    except Exception:
+        BASE_CNN = None
+        for lyr in model.layers:
+            if isinstance(lyr, tf.keras.Model):
+                BASE_CNN = lyr
+                break
+        if BASE_CNN is None:
+            BASE_CNN = model
+
+except Exception as e:
+    print("❌ Model load failed:", e)
+    model = None
     BASE_CNN = None
-    for lyr in model.layers:
-        if isinstance(lyr, tf.keras.Model):
-            BASE_CNN = lyr
-            break
-    if BASE_CNN is None:
-        BASE_CNN = model  # fallback
+
 
 # --------------------------------
 # Load class names
@@ -81,6 +163,7 @@ if os.path.exists("classes.json"):
     except Exception:
         CLASS_NAMES = None
 
+
 # --------------------------------
 # Utils: images & prediction
 # --------------------------------
@@ -89,14 +172,17 @@ def preprocess_image(img_path: str) -> np.ndarray:
     img_array = kimage.img_to_array(img) / 255.0
     return np.expand_dims(img_array, axis=0)
 
+
 def predict_label_multiclass(img_path: str) -> str:
-    """Predicts exact class name from multiclass model."""
+    if model is None:
+        return "MODEL_NOT_LOADED"
     arr = preprocess_image(img_path)
     pred = model.predict(arr, verbose=0)
     idx = int(np.argmax(pred[0]))
     if CLASS_NAMES:
         return CLASS_NAMES[idx]
     return f"class_{idx}"
+
 
 # --------------------------------
 # Load disease rules JSON
@@ -108,18 +194,14 @@ try:
 except Exception as e:
     print("Could not load disease_rules.json:", e)
 
+
 # --------------------------------
 # Weather-based risk score
 # --------------------------------
 def compute_risk_level(humidity=None, temperature=None) -> str:
-    """
-    Simple weather-based risk scoring system.
-    Returns: 'Low', 'Moderate', 'High', 'Severe', or 'Unknown'
-    """
     if humidity is None:
         return "Unknown"
 
-    # Base score from humidity
     if humidity < 60:
         score = 1
     elif humidity < 75:
@@ -129,20 +211,14 @@ def compute_risk_level(humidity=None, temperature=None) -> str:
     else:
         score = 4
 
-    # Temperature boost (fungal disease risk)
     if temperature is not None and 22 <= temperature <= 30:
         score = min(score + 1, 4)
 
-    levels = {
-        1: "Low",
-        2: "Moderate",
-        3: "High",
-        4: "Severe"
-    }
-    return levels.get(score, "Unknown")
+    return {1: "Low", 2: "Moderate", 3: "High", 4: "Severe"}.get(score, "Unknown")
+
 
 # --------------------------------
-# Severity mapping (for NDVI etc.)
+# Severity mapping
 # --------------------------------
 def determine_severity(ndvi_delta=None) -> str:
     if ndvi_delta is None:
@@ -154,6 +230,7 @@ def determine_severity(ndvi_delta=None) -> str:
     else:
         return "severe"
 
+
 # --------------------------------
 # Advanced Recommendation Engine
 # --------------------------------
@@ -164,12 +241,10 @@ def get_advanced_recommendations(label: Optional[str],
     if not label:
         return ["No disease label detected."]
 
-    # Normalize label key
-    key = label.lower()
-    key = key.replace(" ", "_")
-    key = re.sub(r"_+", "_", key)  # collapse multiple underscores into one
+    key = label.lower().replace(" ", "_")
+    key = re.sub(r"_+", "_", key)
 
-    # ---------------- HEALTHY CASE ----------------
+    # HEALTHY CASE
     if "healthy" in key:
         matched = None
         for disease_key in DISEASE_RULES.keys():
@@ -186,7 +261,6 @@ def get_advanced_recommendations(label: Optional[str],
 
         data = rules["severity"]["normal"]
         recs: List[str] = []
-
         recs.append("### Healthy Plant Maintenance:")
         recs.extend(f"- {x}" for x in data.get("actions", []))
 
@@ -200,7 +274,6 @@ def get_advanced_recommendations(label: Optional[str],
             trig = rules["environment_triggers"]
             if humidity is not None and humidity > trig.get("humidity_gt", 999):
                 recs.append("\n⚠ **Warning:** " + trig.get("warning", ""))
-
             if temperature is not None and "temp_range" in trig:
                 lo, hi = trig["temp_range"]
                 if lo <= temperature <= hi:
@@ -208,7 +281,7 @@ def get_advanced_recommendations(label: Optional[str],
 
         return recs
 
-    # ---------------- DISEASE CASE ----------------
+    # DISEASE CASE
     matched = None
     for disease in DISEASE_RULES.keys():
         if disease in key:
@@ -219,7 +292,7 @@ def get_advanced_recommendations(label: Optional[str],
         return ["Disease detected, but no detailed rules available."]
 
     rules = DISEASE_RULES[matched]
-    severity = determine_severity(ndvi_delta)  # currently NDVI-based; can later plug real NDVI
+    severity = determine_severity(ndvi_delta)
 
     if "severity" not in rules or severity not in rules["severity"]:
         return ["Severity level not found in rules."]
@@ -249,6 +322,7 @@ def get_advanced_recommendations(label: Optional[str],
 
     return recs
 
+
 # --------------------------------
 # Marketplace & Laws JSON loaders
 # --------------------------------
@@ -261,11 +335,14 @@ def _load_json_file(path):
     except Exception:
         return None
 
+
 PRODUCTS = _load_json_file("products.json") or []
 LAWS = _load_json_file("laws.json") or {}
 
+
 def _norm(s: Optional[str]) -> str:
     return (s or "").strip().lower()
+
 
 def infer_crop_from_label(predicted_label: Optional[str]) -> Optional[str]:
     if not predicted_label:
@@ -276,6 +353,7 @@ def infer_crop_from_label(predicted_label: Optional[str]) -> Optional[str]:
              "apple", "grape", "citrus", "banana", "cotton", "soybean", "mustard", "pepper", "bell"}
     return first if first in known else None
 
+
 def marketplace_recommendations(predicted_label: Optional[str]) -> List[dict]:
     if not PRODUCTS:
         return []
@@ -283,6 +361,7 @@ def marketplace_recommendations(predicted_label: Optional[str]) -> List[dict]:
     tags = [k for k in ["blight", "rust", "mildew", "rot", "spot", "scab", "bacterial", "insect", "mite"] if k in label]
     if not tags:
         tags = ["general"]
+
     crop = infer_crop_from_label(predicted_label)
     out = []
     for p in PRODUCTS:
@@ -290,6 +369,7 @@ def marketplace_recommendations(predicted_label: Optional[str]) -> List[dict]:
         crops = [_norm(c) for c in p.get("crops", [])]
         if any(t in ftags for t in tags) and (crop is None or crop in crops or not crops):
             out.append(p)
+
     final = []
     seen = set()
     for p in out:
@@ -302,6 +382,7 @@ def marketplace_recommendations(predicted_label: Optional[str]) -> List[dict]:
             break
     return final
 
+
 def laws_for_state(state: Optional[str], predicted_label: Optional[str]) -> List[dict]:
     if not state:
         return []
@@ -312,11 +393,13 @@ def laws_for_state(state: Optional[str], predicted_label: Optional[str]) -> List
         items += state_data.get(crop, [])
     return items
 
+
 # --------------------------------
-# Soil Add-on (Location + Manual Soil Type)
+# Soil Add-on
 # --------------------------------
 SOIL_CATALOG = _load_json_file("soil/soil_catalog.json") or {}
 STATE_SOILS = _load_json_file("soil/state_soils.json") or {}
+
 
 def get_state_default_soils(state: str) -> List[str]:
     st = (state or "").strip()
@@ -324,16 +407,8 @@ def get_state_default_soils(state: str) -> List[str]:
         return []
     return STATE_SOILS[st].get("default_soils", []) or []
 
-def get_soil_info(soil_type: Optional[str]) -> Optional[dict]:
-    if not soil_type:
-        return None
-    return SOIL_CATALOG.get(soil_type)
 
 def choose_soil(state: str, manual_soil: Optional[str]) -> Tuple[Optional[str], Optional[dict], str]:
-    """
-    Returns: (soil_type, soil_info, source)
-    source: 'manual' or 'default' or 'none'
-    """
     manual_soil = (manual_soil or "").strip()
     if manual_soil and manual_soil in SOIL_CATALOG:
         return manual_soil, SOIL_CATALOG[manual_soil], "manual"
@@ -345,13 +420,10 @@ def choose_soil(state: str, manual_soil: Optional[str]) -> Tuple[Optional[str], 
 
     return None, None, "none"
 
+
 def soil_weather_leaf_fusion_notes(soil_info: Optional[dict],
                                   weather: Optional[dict],
                                   predicted_label: Optional[str]) -> List[str]:
-    """
-    Adds extra recommendations based on soil traits + weather + disease label.
-    Keep it rule-based and PBL-friendly.
-    """
     notes = []
     if not soil_info:
         return notes
@@ -359,7 +431,6 @@ def soil_weather_leaf_fusion_notes(soil_info: Optional[dict],
     traits = (soil_info.get("traits") or {})
     base = (soil_info.get("baseline") or {})
 
-    # Baseline soil guidance
     notes.append("### Soil-Based Advisory:")
     for x in base.get("amendments", []):
         notes.append(f"- **Soil amendment:** {x}")
@@ -368,26 +439,21 @@ def soil_weather_leaf_fusion_notes(soil_info: Optional[dict],
     for x in base.get("warnings", []):
         notes.append(f"- ⚠ **Soil warning:** {x}")
 
-    # Weather-driven adjustments
     if weather:
         hum = weather.get("humidity")
         temp = weather.get("temp_c")
 
-        # High humidity + poor drainage => fungal/waterlogging warning
         if hum is not None and hum >= 75 and traits.get("drainage") in ("poor", "poor_to_medium"):
             notes.append("- ⚠ **High humidity + poor drainage**: Increase drainage, avoid over-irrigation, keep foliage dry at night.")
 
-        # Temperature sweet-spot for fungal spread + high water retention soils
         if temp is not None and 22 <= float(temp) <= 30 and traits.get("water_retention") in ("high",):
             notes.append("- ⚠ **Warm + high water retention soil**: Fungal spread risk increases; ensure spacing, airflow, and morning watering only.")
 
-    # Leaf label adjustments (very simple but useful)
     label = (predicted_label or "").lower()
     if label:
         if any(k in label for k in ["blight", "spot", "mildew", "rust"]):
-            # fungal-like
             if traits.get("drainage") in ("poor", "poor_to_medium"):
-                notes.append("- ✅ Because disease looks fungal + soil drains poorly: prioritize drainage + avoid wet leaves; spray timing matters (avoid before rain).")
+                notes.append("- ✅ Disease looks fungal + soil drains poorly: prioritize drainage + avoid wet leaves; spray timing matters (avoid before rain).")
         if "healthy" in label:
             notes.append("- ✅ Plant looks healthy: follow soil maintenance + preventive schedule (compost + proper irrigation).")
 
@@ -395,13 +461,15 @@ def soil_weather_leaf_fusion_notes(soil_info: Optional[dict],
 
 
 # --------------------------------
-# Weather Functions (with cache)
+# Weather cache + functions
 # --------------------------------
 _weather_cache: Dict[str, Tuple[float, Optional[dict], Optional[str]]] = {}
 _forecast_cache: Dict[str, Tuple[float, Optional[List[dict]], Optional[str]]] = {}
 
+
 def _city_key(city: str) -> str:
     return city.strip().lower()
+
 
 def fetch_weather(city_name: str) -> Tuple[Optional[dict], Optional[str]]:
     if not city_name:
@@ -446,6 +514,7 @@ def fetch_weather(city_name: str) -> Tuple[Optional[dict], Optional[str]]:
     except Exception as e:
         _weather_cache[key] = (now, None, f"Weather exception: {e}")
         return None, f"Weather exception: {e}"
+
 
 def fetch_forecast(city_name: str) -> Tuple[Optional[List[dict]], Optional[str]]:
     if not city_name:
@@ -493,106 +562,115 @@ def fetch_forecast(city_name: str) -> Tuple[Optional[List[dict]], Optional[str]]
         _forecast_cache[key] = (now, None, f"Forecast exception: {e}")
         return None, f"Forecast exception: {e}"
 
+
 # --------------------------------
-# Grad-CAM (MobileNetV2-aware)
+# Grad-CAM (safe build)
 # --------------------------------
-# --------------------------------
-# Grad-CAM (Fixed for MobileNetV2)
-# --------------------------------
-# --------------------------------
-# Grad-CAM (fixed for your MobileNetV2 model)
-# --------------------------------
-import tensorflow as tf
+GRAD_MODEL = None
+
 
 def build_gradcam_model():
-    """
-    Build a clean model for Grad-CAM:
-    input -> MobileNetV2 -> GAP -> Dropout -> Dense
-    while tapping the last Conv layer ('Conv_1') from MobileNetV2.
-    """
     base = BASE_CNN
-    if base is None:
-        raise RuntimeError("Grad-CAM: BASE_CNN (mobilenetv2_1.00_224) not found.")
+    if base is None or model is None:
+        raise RuntimeError("Grad-CAM: model/base CNN not loaded.")
 
-    # Last conv inside MobileNetV2
-    try:
-        last_conv_layer = base.get_layer("Conv_1")
-    except Exception as e:
-        raise RuntimeError(f"Grad-CAM: could not find Conv_1 layer: {e}")
+    last_conv_layer = base.get_layer("Conv_1")
 
-    # Head layers from the full model
     gap_layer = model.get_layer("global_average_pooling2d")
     drop_layer = model.get_layer("dropout")
     dense_layer = model.get_layer("dense")
 
-    # Build the functional graph starting from base CNN input
-    base_input = base.input             # (None, 224, 224, 3)
-    x = base.output                     # feature maps (7x7x1280)
+    base_input = base.input
+    x = base.output
     x = gap_layer(x)
-    x = drop_layer(x, training=False)   # ensure inference mode
-    preds = dense_layer(x)              # logits / softmax
+    x = drop_layer(x, training=False)
+    preds = dense_layer(x)
 
-    grad_model = tf.keras.models.Model(
-        inputs=base_input,
-        outputs=[last_conv_layer.output, preds],
-        name="gradcam_model"
-    )
-    return grad_model, last_conv_layer
+    grad_model = tf.keras.models.Model(inputs=base_input, outputs=[last_conv_layer.output, preds], name="gradcam_model")
+    return grad_model
 
-GRAD_MODEL, LAST_CONV_LAYER = build_gradcam_model()
+
+try:
+    GRAD_MODEL = build_gradcam_model()
+except Exception as e:
+    print("⚠ Grad-CAM build skipped:", e)
+    GRAD_MODEL = None
+
 
 def generate_gradcam(image_path: str) -> str:
-    """
-    Generate a colored Grad-CAM heatmap (JET colormap) for the given image
-    and save it under static/uploads/gradcam_<originalname>.png
-    """
-    # 1) Load and preprocess image same as prediction
+    if Image is None:
+        raise RuntimeError("Pillow (PIL) missing. Install: pip install pillow")
+    if GRAD_MODEL is None:
+        raise RuntimeError("Grad-CAM not available (model missing/incompatible).")
+
     img = kimage.load_img(image_path, target_size=(IMG_SIZE, IMG_SIZE))
     img_arr = kimage.img_to_array(img) / 255.0
     img_arr = np.expand_dims(img_arr, axis=0).astype("float32")
 
-    # 2) Forward + gradients through GRAD_MODEL
     with tf.GradientTape() as tape:
         conv_out, preds = GRAD_MODEL(img_arr)
         class_idx = tf.argmax(preds[0])
         loss = preds[:, class_idx]
 
-    grads = tape.gradient(loss, conv_out)[0]              # (H, W, C)
-    pooled_grads = tf.reduce_mean(grads, axis=(0, 1))     # (C,)
-
-    conv_out = conv_out[0]                                # (H, W, C)
+    grads = tape.gradient(loss, conv_out)[0]
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1))
+    conv_out = conv_out[0]
     heatmap = tf.reduce_sum(tf.multiply(pooled_grads, conv_out), axis=-1).numpy()
 
-    # 3) Normalize heatmap 0..1
     heatmap = np.maximum(heatmap, 0)
     max_val = np.max(heatmap)
     if max_val > 0:
         heatmap /= max_val
 
-    # 4) Resize heatmap to image size
-    heatmap_img = Image.fromarray(np.uint8(255 * heatmap))
-    heatmap_img = heatmap_img.resize((IMG_SIZE, IMG_SIZE))
+    heatmap_img = Image.fromarray(np.uint8(255 * heatmap)).resize((IMG_SIZE, IMG_SIZE))
     heatmap_arr = np.array(heatmap_img)
 
-    # 5) Apply JET colormap (blue→green→yellow→red)
     import matplotlib.cm as cm
-    colormap = cm.get_cmap("jet")
-    colored_heatmap = colormap(heatmap_arr / 255.0)       # RGBA
-    colored_heatmap = (colored_heatmap[..., :3] * 255).astype(np.uint8)
+    colored_heatmap = (cm.get_cmap("jet")(heatmap_arr / 255.0)[..., :3] * 255).astype(np.uint8)
 
-    # 6) Overlay on original image
     orig = np.array(img).astype("float32")
-    alpha = 0.55   # increase for stronger heatmap
+    alpha = 0.55
     overlay = (alpha * colored_heatmap + (1 - alpha) * orig).astype(np.uint8)
 
-    # 7) Save output
     base_name = os.path.basename(image_path)
     name, _ = os.path.splitext(base_name)
     out_path = os.path.join(UPLOAD_FOLDER, f"gradcam_{name}.png")
     Image.fromarray(overlay).save(out_path)
-
     return out_path.replace("\\", "/")
 
+
+# --------------------------------
+# NDVI Route (separate, safe)
+# --------------------------------
+@app.route("/ndvi/analyze", methods=["POST"])
+def ndvi_analyze():
+    if load_rgb_image is None or ndvi_metrics is None:
+        return {"error": "NDVI module not available. Ensure ndvi_utils.py exists and install Pillow: pip install pillow"}, 500
+
+    if "image" not in request.files:
+        return {"error": "No image file provided (expected form field name: image)"}, 400
+
+    file = request.files["image"]
+    if file.filename == "":
+        return {"error": "Empty filename"}, 400
+
+    filename = secure_filename(file.filename)
+    save_name = f"ndvi_{filename}"
+    save_path = os.path.join("static", "uploads", save_name)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    file.save(save_path)
+
+    try:
+        rgb = load_rgb_image(save_path)
+        metrics = ndvi_metrics(rgb)
+        return {"status": "ok", "image_path": save_path.replace("\\", "/"), **metrics}, 200
+    except Exception as e:
+        return {"error": f"NDVI analysis failed: {str(e)}"}, 500
+
+
+# --------------------------------
+# Soil API Route
+# --------------------------------
 @app.route("/soil/recommendations", methods=["POST"])
 def soil_recommendations_api():
     data = request.get_json(silent=True) or {}
@@ -611,11 +689,148 @@ def soil_recommendations_api():
     })
 
 
+# ================================================
+# OFFLINE LLM CHATBOT (Ollama) — /chat endpoint
+# ================================================
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "phi3")  # you pulled phi3
+
+
+def _chat_system_prompt() -> str:
+    return (
+        "You are 'Farming Help Assistant', an agriculture advisory chatbot inside a student PBL Flask app.\n"
+        "Be concise, practical, and safe.\n"
+        "Do NOT give exact pesticide dosages; advise to follow label + local agriculture officer guidance.\n"
+        "Use provided context (disease label, severity, weather, soil traits, marketplace, laws).\n"
+        "Output plain text with short bullet points.\n"
+    )
+
+
+def _format_context(ctx: dict) -> str:
+    parts = []
+    if ctx.get("result"): parts.append(f"Disease label: {ctx['result']}")
+    if ctx.get("severity"): parts.append(f"Severity: {ctx['severity']}")
+    if ctx.get("risk"): parts.append(f"Weather risk: {ctx['risk']}")
+
+    w = ctx.get("weather")
+    if isinstance(w, dict) and w:
+        parts.append(f"Weather: {w.get('temp_c')}°C, humidity {w.get('humidity')}%, {w.get('description')}")
+        parts.append(f"City: {w.get('city')}")
+
+    if ctx.get("chosen_soil"):
+        parts.append(f"Soil: {ctx['chosen_soil']}")
+
+    si = ctx.get("soil_info")
+    if isinstance(si, dict) and si.get("traits"):
+        t = si["traits"]
+        parts.append(f"Soil traits: water_retention={t.get('water_retention')}, drainage={t.get('drainage')}, ph_tendency={t.get('ph_tendency')}")
+
+    if isinstance(ctx.get("laws_links"), list) and ctx["laws_links"]:
+        parts.append(f"Laws links available: {len(ctx['laws_links'])} items")
+
+    if isinstance(ctx.get("market"), list) and ctx["market"]:
+        parts.append(f"Marketplace suggestions available: {len(ctx['market'])} items")
+
+    return "\n".join(parts) if parts else "No analysis context available yet."
+
+
+def _session_get_history():
+    hist = session.get("chat_history", [])
+    if not isinstance(hist, list):
+        hist = []
+    return hist[-10:]
+
+
+def _session_append(role: str, content: str):
+    hist = _session_get_history()
+    hist.append({"role": role, "content": content})
+    session["chat_history"] = hist[-10:]
+
+
+def ollama_chat_reply(user_message: str, ctx: dict):
+    user_message = (user_message or "").strip()
+    if not user_message:
+        return "Ask: 'What should I do now?' or 'Explain the risk'.", "fallback"
+
+    history = _session_get_history()
+    transcript_lines = []
+    for m in history:
+        r = (m.get("role") or "").upper()
+        c = (m.get("content") or "").strip()
+        if r and c:
+            transcript_lines.append(f"{r}: {c}")
+    transcript = "\n".join(transcript_lines)
+
+    prompt = (
+        f"SYSTEM:\n{_chat_system_prompt()}\n\n"
+        f"CONTEXT:\n{_format_context(ctx)}\n\n"
+        f"HISTORY:\n{transcript if transcript else '(none)'}\n\n"
+        f"USER:\n{user_message}\n\n"
+        f"ASSISTANT:\n"
+    )
+
+    try:
+        r = requests.post(
+            f"{OLLAMA_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.2,
+                    "top_p": 0.9,
+                    "num_predict": 150
+                }
+            },
+            timeout=60
+        )
+        if r.status_code != 200:
+            return f"Ollama error HTTP {r.status_code}: {r.text}", "fallback"
+
+        data = r.json()
+        reply = (data.get("response") or "").strip()
+        return (reply if reply else "No response from model."), "ollama"
+
+    except Exception as e:
+        return f"Ollama exception: {e}. Is Ollama running?", "fallback"
+
+
+@app.route("/chat", methods=["POST"])
+@login_required
+def chat():
+    data = request.get_json(silent=True) or {}
+    user_msg = data.get("message", "")
+
+    ctx = {
+        "result": data.get("result"),
+        "severity": data.get("severity"),
+        "risk": data.get("risk"),
+        "weather": data.get("weather"),
+        "chosen_soil": data.get("chosen_soil"),
+        "soil_info": data.get("soil_info"),
+        "market": data.get("market"),
+        "laws_links": data.get("laws_links"),
+    }
+
+    _session_append("user", user_msg)
+    reply, mode = ollama_chat_reply(user_msg, ctx)
+    _session_append("assistant", reply)
+
+    return jsonify({"reply": reply, "mode": mode})
+
+
+@app.route("/chat/reset", methods=["POST"])
+@login_required
+def chat_reset():
+    session["chat_history"] = []
+    return jsonify({"status": "ok"})
+
 
 # --------------------------------
-# ROUTES
+# MAIN UI ROUTE (Protected)
 # --------------------------------
 @app.route("/", methods=["GET", "POST"])
+@login_required
 def index():
     result = None
     image_url = None
@@ -632,7 +847,7 @@ def index():
     market = []
     laws_links = []
     risk = None
-    severity_ui = None  # for UI display (weather-based / fallback)
+    severity_ui = None
     soil_type = ""
     chosen_soil = None
     soil_info = None
@@ -644,37 +859,32 @@ def index():
         city = request.form.get("city", "").strip()
         state = request.form.get("state", "").strip() or ""
 
-        # ------------------- ANALYZE -------------------
         if action == "analyze":
-            # ✅ SOIL INPUT (add here)
             soil_type = request.form.get("soil_type", "").strip()
             soil_defaults = get_state_default_soils(state)
             chosen_soil, soil_info, soil_source = choose_soil(state, soil_type)
+
             file = request.files.get("file")
             if file and file.filename:
                 filename = secure_filename(file.filename)
                 filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
                 file.save(filepath)
 
-                # normalize paths
                 image_path_internal = filepath
                 image_url = filepath.replace("\\", "/")
 
                 predicted_label = predict_label_multiclass(image_path_internal)
                 result = predicted_label
 
-                # Weather first (for risk & recs)
                 if city:
                     weather, weather_error = fetch_weather(city)
                     forecast, forecast_error = fetch_forecast(city)
 
-                # Risk based on weather
                 risk = compute_risk_level(
                     humidity=weather["humidity"] if weather else None,
                     temperature=weather["temp_c"] if weather else None
                 )
 
-                # Recommendations (environment-aware)
                 recs = get_advanced_recommendations(
                     predicted_label,
                     ndvi_delta=None,
@@ -684,36 +894,28 @@ def index():
                 recs += ["", "----", ""]
                 recs += soil_weather_leaf_fusion_notes(soil_info, weather, predicted_label)
 
-                # Marketplace & laws
                 market = marketplace_recommendations(predicted_label)
                 laws_links = laws_for_state(state, predicted_label)
 
-                # Severity for UI (D: show everywhere)
                 if predicted_label:
                     label_lower = predicted_label.lower()
                     if "healthy" in label_lower:
                         severity_ui = "Normal"
                     else:
                         if risk and risk != "Unknown":
-                            map_risk_to_severity = {
-                                "Low": "Mild",
-                                "Moderate": "Moderate",
-                                "High": "Severe",
-                                "Severe": "Severe",
-                            }
-                            severity_ui = map_risk_to_severity.get(risk, "Moderate")
+                            severity_ui = {"Low": "Mild", "Moderate": "Moderate", "High": "Severe", "Severe": "Severe"}.get(risk, "Moderate")
                         else:
                             severity_ui = determine_severity(None).capitalize()
 
-        # ------------------- GRAD-CAM -------------------
         elif action == "gradcam":
             existing = request.form.get("image_path", "")
             city = request.form.get("city", "").strip()
             state = request.form.get("state", "").strip() or ""
-            # ✅ SOIL INPUT (add here)
+
             soil_type = request.form.get("soil_type", "").strip()
             soil_defaults = get_state_default_soils(state)
-            chosen_soil, soil_info, soil_source = choose_soil(state, soil_type)  
+            chosen_soil, soil_info, soil_source = choose_soil(state, soil_type)
+
             if existing:
                 existing = existing.replace("\\", "/")
 
@@ -722,18 +924,15 @@ def index():
                     image_path_internal = existing
                     image_url = existing.replace("\\", "/")
 
-                    # Weather (if city provided)
                     if city:
                         weather, weather_error = fetch_weather(city)
                         forecast, forecast_error = fetch_forecast(city)
 
-                    # Risk
                     risk = compute_risk_level(
                         humidity=weather["humidity"] if weather else None,
                         temperature=weather["temp_c"] if weather else None
                     )
 
-                    # Predictions & recs
                     predicted_label = predict_label_multiclass(image_path_internal)
                     result = predicted_label
 
@@ -749,24 +948,16 @@ def index():
                     market = marketplace_recommendations(predicted_label)
                     laws_links = laws_for_state(state, predicted_label)
 
-                    # Severity for UI
                     if predicted_label:
                         label_lower = predicted_label.lower()
                         if "healthy" in label_lower:
                             severity_ui = "Normal"
                         else:
                             if risk and risk != "Unknown":
-                                map_risk_to_severity = {
-                                    "Low": "Mild",
-                                    "Moderate": "Moderate",
-                                    "High": "Severe",
-                                    "Severe": "Severe",
-                                }
-                                severity_ui = map_risk_to_severity.get(risk, "Moderate")
+                                severity_ui = {"Low": "Mild", "Moderate": "Moderate", "High": "Severe", "Severe": "Severe"}.get(risk, "Moderate")
                             else:
                                 severity_ui = determine_severity(None).capitalize()
 
-                    # Generate Grad-CAM
                     grad_path = generate_gradcam(image_path_internal)
                     gradcam_url = grad_path.replace("\\", "/")
 
@@ -798,20 +989,27 @@ def index():
         chosen_soil=chosen_soil,
         soil_source=soil_source,
         soil_info=soil_info
-
     )
+
+
+# --------------------------------
+# Error handler
+# --------------------------------
+@app.errorhandler(RequestEntityTooLarge)
+def file_too_large(e):
+    return {"error": "File too large. Max 5MB."}, 413
+
 
 # --------------------------------
 # MAIN
 # --------------------------------
 if __name__ == "__main__":
-    print("API KEY DETECTED?", bool(os.environ.get("OPENWEATHER_API_KEY")))
+    print("OPENWEATHER_API_KEY detected?", bool(os.environ.get("OPENWEATHER_API_KEY")))
     if not OPENWEATHER_API_KEY:
         print("NOTE: Weather disabled until API key is set.")
+
+    print("Login user:", APP_USER)
+    print("Ollama expected at:", OLLAMA_URL)
+    print("Ollama model:", OLLAMA_MODEL)
+
     app.run(debug=True)
-
-from werkzeug.exceptions import RequestEntityTooLarge
-
-@app.errorhandler(RequestEntityTooLarge)
-def file_too_large(e):
-    return {"error": "File too large. Max 5MB."}, 413
